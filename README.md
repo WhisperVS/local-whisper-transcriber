@@ -157,6 +157,27 @@ Language: choose manually if known, otherwise Auto detect
 Task: transcribe
 ```
 
+For normal use, you do **not** need to change CPU threads or beam size. The preset controls those advanced speed/accuracy settings for you.
+
+### What does Task mean?
+
+```text
+transcribe = write the speech in the original spoken language
+translate  = translate spoken audio into English
+```
+
+Important: Whisper's built-in `translate` mode translates **to English**. It is not a general Russian-to-Spanish or English-to-Russian translator.
+
+For example:
+
+```text
+Russian audio + transcribe = Russian text
+Russian audio + translate  = English text
+Spanish audio + translate  = English text
+```
+
+Use `transcribe` for normal transcripts.
+
 For faster transcription:
 
 ```text

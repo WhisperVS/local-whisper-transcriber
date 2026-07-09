@@ -380,15 +380,14 @@ class MainWindow(QMainWindow):
         self.vad_filter = QCheckBox("Skip silence")
         self.condition_context = QCheckBox("Use previous text context")
 
-        compact_widgets = [
-            self.preset,
-            self.model_size,
-            self.language,
-            self.task,
-            self.compute_type,
-            self.beam_size,
-            self.cpu_threads,
-        ]
+        # Keep beginner workflow clean. The preset controls compute type, beam size,
+        # and CPU threads behind the scenes; those advanced controls remain available
+        # in code but are not shown in the main UI.
+        self.compute_type.setCurrentText("int8")
+        self.beam_size.setValue(3)
+        self.condition_context.setChecked(False)
+
+        compact_widgets = [self.preset, self.model_size, self.language, self.task]
         for widget in compact_widgets:
             widget.setMinimumHeight(34)
             widget.setMaximumWidth(360)
@@ -396,7 +395,7 @@ class MainWindow(QMainWindow):
 
         def add_setting(row: int, col: int, label_text: str, widget: QWidget) -> None:
             label = QLabel(label_text)
-            label.setMinimumWidth(110)
+            label.setMinimumWidth(90)
             settings_layout.addWidget(label, row, col * 2)
             settings_layout.addWidget(widget, row, col * 2 + 1)
 
@@ -404,11 +403,11 @@ class MainWindow(QMainWindow):
         add_setting(0, 1, "Language", self.language)
         add_setting(1, 0, "Model", self.model_size)
         add_setting(1, 1, "Task", self.task)
-        add_setting(2, 0, "Compute", self.compute_type)
-        add_setting(2, 1, "Beam size", self.beam_size)
-        add_setting(3, 0, "CPU threads", self.cpu_threads)
-        settings_layout.addWidget(self.vad_filter, 3, 2, 1, 1)
-        settings_layout.addWidget(self.condition_context, 3, 3, 1, 1)
+        settings_layout.addWidget(self.vad_filter, 2, 0, 1, 2)
+        helper = QLabel("Normal use: choose file → keep Balanced → click Start. Preset handles advanced speed settings.")
+        helper.setStyleSheet("color: #94a3b8;")
+        helper.setWordWrap(True)
+        settings_layout.addWidget(helper, 2, 2, 1, 2)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
@@ -505,7 +504,7 @@ class MainWindow(QMainWindow):
         return True
 
     def start_transcription(self) -> None:
-        if self.worker_thread and self.worker_thread.isRunning():
+        if self.is_transcription_running():
             QMessageBox.information(self, "Busy", "A transcription is already running.")
             return
         if not self.validate_inputs():
@@ -537,12 +536,30 @@ class MainWindow(QMainWindow):
         self.worker.failed.connect(self.fail_transcription)
         self.worker.finished.connect(self.worker_thread.quit)
         self.worker.failed.connect(self.worker_thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.failed.connect(self.worker.deleteLater)
+        self.worker_thread.finished.connect(self.cleanup_worker_state)
         self.worker_thread.finished.connect(self.worker_thread.deleteLater)
         self.worker_thread.start()
 
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
         self.status_bar.showMessage(text)
+
+    def is_transcription_running(self) -> bool:
+        if self.worker_thread is None:
+            return False
+        try:
+            return bool(self.worker_thread.isRunning())
+        except RuntimeError:
+            # Qt object was already deleted; clear stale Python references.
+            self.cleanup_worker_state()
+            return False
+
+    def cleanup_worker_state(self) -> None:
+        self.worker = None
+        self.worker_thread = None
+        self.start_btn.setEnabled(True)
 
     def finish_transcription(self, transcript: str, status: str, txt_path: str, srt_path: str, vtt_path: str) -> None:
         self.transcript.setPlainText(transcript)
@@ -594,7 +611,7 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt method name
-        if self.worker_thread and self.worker_thread.isRunning():
+        if self.is_transcription_running():
             reply = QMessageBox.question(
                 self,
                 "Transcription running",
