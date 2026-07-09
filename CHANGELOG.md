@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Reduced fullscreen dead space by widening the main content cap and letting Settings fields fill their columns instead of staying narrow on large monitors.
 - Made the app layout adaptive for arbitrary window resizing: smaller widths switch Settings to a single-column layout instead of relying on one fixed resolution.
 - Reworked the settings area to use explicit card titles and label-above-field controls so combo boxes do not visually stack on top of each other on Windows.
 - Polished the desktop UI for fullscreen and smaller windows: cleaner dark theme, centered max-width content, stronger visual hierarchy, bigger touch targets, clearer step titles, and better spacing around the save buttons.

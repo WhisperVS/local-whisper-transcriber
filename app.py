@@ -412,7 +412,10 @@ class MainWindow(QMainWindow):
 
         content = QWidget()
         content.setObjectName("contentPanel")
-        content.setMaximumWidth(1280)
+        # Keep fullscreen readable, but do not make the app feel like a narrow
+        # web page on common 1920px monitors. The previous 1280px cap left too
+        # much unused space at fullscreen.
+        content.setMaximumWidth(1680)
         content.setMinimumHeight(760)
         content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         layout = QVBoxLayout(content)
@@ -514,7 +517,6 @@ class MainWindow(QMainWindow):
         compact_widgets = [self.preset, self.model_size, self.language, self.task]
         for widget in compact_widgets:
             widget.setMinimumHeight(38)
-            widget.setMaximumWidth(440)
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         def make_setting(label_text: str, widget: QWidget) -> QWidget:
