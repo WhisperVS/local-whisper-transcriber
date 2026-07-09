@@ -20,11 +20,8 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
-    QFormLayout,
-    QFrame,
     QGridLayout,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -32,6 +29,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QStatusBar,
     QVBoxLayout,
@@ -318,38 +316,50 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         root = QWidget()
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 14, 18, 12)
+        layout.setSpacing(10)
 
         title = QLabel(APP_NAME)
         title_font = QFont()
-        title_font.setPointSize(22)
+        title_font.setPointSize(18)
         title_font.setBold(True)
         title.setFont(title_font)
-        subtitle = QLabel("No browser. No paid API. Local transcription with faster-whisper.")
+        subtitle = QLabel("No browser • No paid API • Local transcription with faster-whisper")
         subtitle.setStyleSheet("color: #93c5fd;")
         layout.addWidget(title)
         layout.addWidget(subtitle)
 
-        file_box = QGroupBox("Input and output")
+        file_box = QGroupBox("Input")
         file_layout = QGridLayout(file_box)
+        file_layout.setColumnStretch(1, 1)
+        file_layout.setHorizontalSpacing(10)
+        file_layout.setVerticalSpacing(8)
         self.file_path = DropLineEdit()
+        self.file_path.setMinimumHeight(36)
         self.file_path.file_dropped.connect(lambda _: self.status_bar.showMessage("File selected by drag and drop."))
         browse_btn = QPushButton("Browse file")
+        browse_btn.setFixedWidth(120)
         browse_btn.clicked.connect(self.browse_file)
         self.output_dir = QLineEdit(str(Path.home() / "Documents" / "LocalWhisperTranscriber"))
+        self.output_dir.setMinimumHeight(36)
         output_btn = QPushButton("Output folder")
+        output_btn.setFixedWidth(120)
         output_btn.clicked.connect(self.browse_output_dir)
-        file_layout.addWidget(QLabel("Audio/video file"), 0, 0)
+        file_layout.addWidget(QLabel("Audio/video"), 0, 0)
         file_layout.addWidget(self.file_path, 0, 1)
         file_layout.addWidget(browse_btn, 0, 2)
-        file_layout.addWidget(QLabel("Save transcripts to"), 1, 0)
+        file_layout.addWidget(QLabel("Save to"), 1, 0)
         file_layout.addWidget(self.output_dir, 1, 1)
         file_layout.addWidget(output_btn, 1, 2)
         layout.addWidget(file_box)
 
         settings_box = QGroupBox("Settings")
-        settings_layout = QFormLayout(settings_box)
+        settings_layout = QGridLayout(settings_box)
+        settings_layout.setHorizontalSpacing(18)
+        settings_layout.setVerticalSpacing(8)
+        settings_layout.setColumnStretch(1, 1)
+        settings_layout.setColumnStretch(3, 1)
+
         self.preset = QComboBox()
         self.preset.addItems(PRESETS.keys())
         self.preset.setCurrentText("Balanced")
@@ -367,55 +377,89 @@ class MainWindow(QMainWindow):
         self.cpu_threads = QSpinBox()
         self.cpu_threads.setRange(1, max(2, os.cpu_count() or 4))
         self.cpu_threads.setValue(min(4, os.cpu_count() or 4))
-        self.vad_filter = QCheckBox("Skip silence / voice activity filter")
-        self.condition_context = QCheckBox("Condition on previous text for long context")
-        settings_layout.addRow("Speed / accuracy preset", self.preset)
-        settings_layout.addRow("Whisper model", self.model_size)
-        settings_layout.addRow("Language", self.language)
-        settings_layout.addRow("Task", self.task)
-        settings_layout.addRow("Compute type", self.compute_type)
-        settings_layout.addRow("Beam size", self.beam_size)
-        settings_layout.addRow("CPU threads", self.cpu_threads)
-        settings_layout.addRow("Voice activity", self.vad_filter)
-        settings_layout.addRow("Long context", self.condition_context)
+        self.vad_filter = QCheckBox("Skip silence")
+        self.condition_context = QCheckBox("Use previous text context")
+
+        compact_widgets = [
+            self.preset,
+            self.model_size,
+            self.language,
+            self.task,
+            self.compute_type,
+            self.beam_size,
+            self.cpu_threads,
+        ]
+        for widget in compact_widgets:
+            widget.setMinimumHeight(34)
+            widget.setMaximumWidth(360)
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        def add_setting(row: int, col: int, label_text: str, widget: QWidget) -> None:
+            label = QLabel(label_text)
+            label.setMinimumWidth(110)
+            settings_layout.addWidget(label, row, col * 2)
+            settings_layout.addWidget(widget, row, col * 2 + 1)
+
+        add_setting(0, 0, "Preset", self.preset)
+        add_setting(0, 1, "Language", self.language)
+        add_setting(1, 0, "Model", self.model_size)
+        add_setting(1, 1, "Task", self.task)
+        add_setting(2, 0, "Compute", self.compute_type)
+        add_setting(2, 1, "Beam size", self.beam_size)
+        add_setting(3, 0, "CPU threads", self.cpu_threads)
+        settings_layout.addWidget(self.vad_filter, 3, 2, 1, 1)
+        settings_layout.addWidget(self.condition_context, 3, 3, 1, 1)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
-        action_row = QHBoxLayout()
+        control_box = QGroupBox("Run")
+        control_layout = QGridLayout(control_box)
+        control_layout.setColumnStretch(3, 1)
         self.start_btn = QPushButton("Start transcription")
+        self.start_btn.setMinimumWidth(150)
         self.start_btn.clicked.connect(self.start_transcription)
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setObjectName("secondary")
+        self.clear_btn.setFixedWidth(90)
         self.clear_btn.clicked.connect(self.clear_output)
         self.open_output_btn = QPushButton("Open output folder")
         self.open_output_btn.setObjectName("secondary")
+        self.open_output_btn.setMinimumWidth(150)
         self.open_output_btn.clicked.connect(self.open_output_folder)
-        action_row.addWidget(self.start_btn)
-        action_row.addWidget(self.clear_btn)
-        action_row.addWidget(self.open_output_btn)
-        action_row.addStretch(1)
-        layout.addLayout(action_row)
-
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
-        layout.addWidget(self.progress)
-
+        self.progress.setMinimumHeight(22)
         self.status_label = QLabel("Ready.")
         self.status_label.setWordWrap(True)
-        layout.addWidget(self.status_label)
+        self.status_label.setMinimumHeight(24)
+        control_layout.addWidget(self.start_btn, 0, 0)
+        control_layout.addWidget(self.clear_btn, 0, 1)
+        control_layout.addWidget(self.open_output_btn, 0, 2)
+        control_layout.addWidget(self.progress, 0, 3)
+        control_layout.addWidget(self.status_label, 1, 0, 1, 4)
+        layout.addWidget(control_box)
 
+        transcript_box = QGroupBox("Transcript")
+        transcript_layout = QVBoxLayout(transcript_box)
         self.transcript = QPlainTextEdit()
         self.transcript.setPlaceholderText("Transcript will appear here...")
-        layout.addWidget(self.transcript, stretch=1)
+        self.transcript.setMinimumHeight(220)
+        transcript_layout.addWidget(self.transcript)
+        layout.addWidget(transcript_box, stretch=1)
 
-        output_box = QFrame()
+        output_box = QGroupBox("Created files")
         output_layout = QGridLayout(output_box)
+        output_layout.setColumnStretch(1, 1)
+        output_layout.setHorizontalSpacing(8)
+        output_layout.setVerticalSpacing(6)
         self.txt_path = QLineEdit()
         self.srt_path = QLineEdit()
         self.vtt_path = QLineEdit()
         for field in (self.txt_path, self.srt_path, self.vtt_path):
             field.setReadOnly(True)
+            field.setMinimumHeight(32)
+            field.setPlaceholderText("Created after transcription")
         output_layout.addWidget(QLabel("TXT"), 0, 0)
         output_layout.addWidget(self.txt_path, 0, 1)
         output_layout.addWidget(QLabel("SRT"), 1, 0)
