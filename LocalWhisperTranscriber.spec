@@ -2,9 +2,8 @@
 
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 
-# Keep the Windows package focused on what this app actually uses.
-# Avoid broad PySide6/Numpy collection: it pulls in Qt WebEngine, SQL drivers,
-# examples, and test packages, creating noisy warnings and a much larger build.
+# Package only the modules used by the desktop app, but be conservative for the
+# Whisper runtime. Missing ML DLLs can make a windowed EXE close immediately.
 datas = []
 binaries = []
 hiddenimports = [
@@ -13,6 +12,9 @@ hiddenimports = [
     "PySide6.QtWidgets",
     "faster_whisper",
     "ctranslate2",
+    "onnxruntime",
+    "onnxruntime.capi._pybind_state",
+    "onnxruntime.capi.onnxruntime_pybind11_state",
     "tokenizers",
     "huggingface_hub",
     "av",
@@ -40,9 +42,9 @@ for package in [
     except Exception:
         pass
 
-# Metadata used by runtime dependency checks. Numpy and PySide6 files/DLLs are handled
-# by PyInstaller's standard hooks from the modules imported by app.py.
-for package in ["numpy", "PySide6", "shiboken6", "requests", "onnxruntime"]:
+# Metadata used by runtime dependency checks. Numpy and PySide6 files/DLLs are
+# handled by PyInstaller's standard hooks from the modules imported by app.py.
+for package in ["numpy", "PySide6", "shiboken6", "requests", "certifi", "packaging"]:
     try:
         datas += copy_metadata(package)
     except Exception:
@@ -69,8 +71,6 @@ a = Analysis(
         "PySide6.QtWebEngineCore",
         "PySide6.QtWebEngineQuick",
         "PySide6.QtWebEngineWidgets",
-        "PySide6.QtSql",
-        "PySide6.QtQml",
         "tkinter",
         "pytest",
         "numpy.tests",
@@ -84,7 +84,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
+windowed_exe = EXE(
     pyz,
     a.scripts,
     [],
@@ -93,7 +93,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -102,13 +102,34 @@ exe = EXE(
     entitlements_file=None,
 )
 
+# Console build for diagnostics. If the normal EXE silently closes, run this
+# from run_exe_debug.bat to capture the real Python/Qt error in exe_debug_log.txt.
+debug_exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="LocalWhisperTranscriberDebug",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
 coll = COLLECT(
-    exe,
+    windowed_exe,
+    debug_exe,
     a.binaries,
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name="LocalWhisperTranscriber",
 )

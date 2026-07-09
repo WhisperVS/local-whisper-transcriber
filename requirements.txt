@@ -1,3 +1,15 @@
+# Keep Windows builds reproducible. Unpinned transitive dependencies can move
+# faster than PyInstaller hooks and make the packaged EXE close on startup.
 faster-whisper==1.1.1
 PySide6==6.8.1.1
-requests>=2.31.0
+requests==2.32.3
+
+# faster-whisper / packaging stack pins tested with Python 3.11/3.12.
+ctranslate2==4.6.0
+onnxruntime==1.19.2
+numpy==1.26.4
+tokenizers==0.20.3
+huggingface-hub==0.26.5
+av==13.1.0
+tqdm==4.67.1
+backports.tarfile==1.2.0

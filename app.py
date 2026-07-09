@@ -9,9 +9,8 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from faster_whisper import WhisperModel
 from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
@@ -66,7 +65,7 @@ PRESETS = {
     "High accuracy": {"model": "medium", "beam": 5, "vad": True, "compute": "int8"},
     "Maximum accuracy / slow": {"model": "large-v3", "beam": 5, "vad": True, "compute": "int8"},
 }
-MODEL_CACHE: dict[tuple[str, str, int], WhisperModel] = {}
+MODEL_CACHE: dict[tuple[str, str, int], Any] = {}
 
 
 DARK_STYLE = """
@@ -222,7 +221,16 @@ def clean_text(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def get_model(model_size: str, compute_type: str, cpu_threads: int) -> WhisperModel:
+def get_model(model_size: str, compute_type: str, cpu_threads: int) -> Any:
+    """Load faster-whisper only when the user starts transcription.
+
+    Keeping this import lazy prevents a packaging/DLL problem in the Whisper
+    engine from stopping the desktop window from opening at all. If the engine
+    fails to load, the app can show the error in the Run area instead of
+    silently closing on startup.
+    """
+    from faster_whisper import WhisperModel
+
     cpu_threads = max(1, int(cpu_threads or 4))
     key = (model_size, compute_type, cpu_threads)
     if key not in MODEL_CACHE:

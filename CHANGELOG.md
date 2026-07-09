@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Fixed packaged EXE startup reliability: the app now lazy-loads faster-whisper only when transcription starts, pins Windows build dependencies, disables UPX, and creates a console debug EXE for crash logs.
 - Reduced fullscreen dead space by widening the main content cap and letting Settings fields fill their columns instead of staying narrow on large monitors.
 - Made the app layout adaptive for arbitrary window resizing: smaller widths switch Settings to a single-column layout instead of relying on one fixed resolution.
 - Reworked the settings area to use explicit card titles and label-above-field controls so combo boxes do not visually stack on top of each other on Windows.

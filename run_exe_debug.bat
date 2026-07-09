@@ -7,8 +7,12 @@ echo Local Whisper Transcriber - EXE Debug Run
 echo ========================================
 echo.
 
-set EXE_PATH=%~dp0dist\LocalWhisperTranscriber\LocalWhisperTranscriber.exe
+set EXE_PATH=%~dp0dist\LocalWhisperTranscriber\LocalWhisperTranscriberDebug.exe
 set LOG_PATH=%~dp0exe_debug_log.txt
+
+if not exist "%EXE_PATH%" (
+    set EXE_PATH=%~dp0dist\LocalWhisperTranscriber\LocalWhisperTranscriber.exe
+)
 
 if not exist "%EXE_PATH%" (
     echo EXE was not found here:
@@ -29,6 +33,7 @@ echo %LOG_PATH%
 echo.
 echo If the app fails, send me a screenshot of this window or the exe_debug_log.txt file.
 echo.
+set QT_DEBUG_PLUGINS=1
 
 "%EXE_PATH%" > "%LOG_PATH%" 2>&1
 

@@ -43,7 +43,7 @@ if exist ".buildvenv" (
 call .buildvenv\Scripts\activate.bat
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python -m pip install pyinstaller
+python -m pip install pyinstaller==6.11.1
 
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
