@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QStatusBar,
@@ -83,6 +84,13 @@ QWidget {
 QWidget#centralRoot {
     background-color: #070b16;
 }
+QScrollArea#mainScroll {
+    background-color: #070b16;
+    border: 0;
+}
+QScrollArea#mainScroll > QWidget > QWidget {
+    background-color: #070b16;
+}
 QWidget#contentPanel {
     background-color: transparent;
 }
@@ -99,28 +107,24 @@ QLabel#title {
     font-size: 19pt;
     font-weight: 800;
 }
-QLabel#subtitle, QLabel#hint, QLabel#model_help, QLabel#save_label {
+QLabel#subtitle, QLabel#hint, QLabel#model_help, QLabel#save_label, QLabel#field_label {
     color: #9fb8d8;
 }
-QLabel#step_badge {
+QLabel#section_title {
     color: #bfdbfe;
-    font-size: 9pt;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-size: 10pt;
+    font-weight: 800;
 }
-QGroupBox {
+QGroupBox#card {
     border: 1px solid #26364f;
     border-radius: 14px;
-    margin-top: 14px;
-    padding: 18px 18px 16px 18px;
+    margin-top: 0;
+    padding: 0;
     background-color: #101827;
 }
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 16px;
-    padding: 0 8px;
-    color: #93c5fd;
-    font-weight: 700;
+QGroupBox#card::title {
+    height: 0;
+    color: transparent;
 }
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox {
     background-color: #050816;
@@ -372,7 +376,7 @@ class MainWindow(QMainWindow):
         self.result_vtt = ""
         self.default_save_stem = "transcript"
         self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
-        self.resize(1180, 780)
+        self.resize(1180, 1000)
         self.setMinimumSize(960, 760)
         self.setStyleSheet(DARK_STYLE)
         self._build_ui()
@@ -390,18 +394,33 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         root = QWidget()
         root.setObjectName("centralRoot")
-        outer_layout = QHBoxLayout(root)
+        root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        scroll_area = QScrollArea()
+        scroll_area.setObjectName("mainScroll")
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QScrollArea.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        scroll_container = QWidget()
+        scroll_container.setObjectName("centralRoot")
+        outer_layout = QHBoxLayout(scroll_container)
         outer_layout.setContentsMargins(18, 14, 18, 12)
         outer_layout.setSpacing(0)
 
         content = QWidget()
         content.setObjectName("contentPanel")
         content.setMaximumWidth(1280)
-        content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        content.setMinimumHeight(760)
+        content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
         outer_layout.addWidget(content, stretch=1)
+        scroll_area.setWidget(scroll_container)
+        root_layout.addWidget(scroll_area)
 
         hero = QWidget()
         hero.setObjectName("hero")
@@ -417,10 +436,17 @@ class MainWindow(QMainWindow):
         hero_layout.addWidget(subtitle)
         layout.addWidget(hero)
 
-        file_box = QGroupBox("1  Choose file")
+        file_box = QGroupBox()
+        file_box.setObjectName("card")
         file_box.setMinimumHeight(112)
-        file_layout = QGridLayout(file_box)
-        file_layout.setContentsMargins(18, 20, 18, 16)
+        file_card_layout = QVBoxLayout(file_box)
+        file_card_layout.setContentsMargins(18, 14, 18, 16)
+        file_card_layout.setSpacing(12)
+        file_title = QLabel("1  Choose file")
+        file_title.setObjectName("section_title")
+        file_card_layout.addWidget(file_title)
+        file_layout = QGridLayout()
+        file_layout.setContentsMargins(0, 0, 0, 0)
         file_layout.setColumnStretch(1, 1)
         file_layout.setHorizontalSpacing(12)
         file_layout.setVerticalSpacing(8)
@@ -432,20 +458,29 @@ class MainWindow(QMainWindow):
         browse_btn.setMinimumHeight(42)
         browse_btn.clicked.connect(self.browse_file)
         file_label = QLabel("Audio/video")
+        file_label.setObjectName("field_label")
         file_label.setMinimumWidth(92)
         file_layout.addWidget(file_label, 0, 0)
         file_layout.addWidget(self.file_path, 0, 1)
         file_layout.addWidget(browse_btn, 0, 2)
+        file_card_layout.addLayout(file_layout)
         layout.addWidget(file_box)
 
-        settings_box = QGroupBox("2  Settings")
-        settings_box.setMinimumHeight(170)
-        settings_layout = QGridLayout(settings_box)
-        settings_layout.setContentsMargins(18, 20, 18, 16)
+        settings_box = QGroupBox()
+        settings_box.setObjectName("card")
+        settings_box.setMinimumHeight(220)
+        settings_card_layout = QVBoxLayout(settings_box)
+        settings_card_layout.setContentsMargins(18, 14, 18, 16)
+        settings_card_layout.setSpacing(12)
+        settings_title = QLabel("2  Settings")
+        settings_title.setObjectName("section_title")
+        settings_card_layout.addWidget(settings_title)
+        settings_layout = QGridLayout()
+        settings_layout.setContentsMargins(0, 0, 0, 0)
         settings_layout.setHorizontalSpacing(18)
-        settings_layout.setVerticalSpacing(10)
+        settings_layout.setVerticalSpacing(14)
+        settings_layout.setColumnStretch(0, 1)
         settings_layout.setColumnStretch(1, 1)
-        settings_layout.setColumnStretch(3, 1)
 
         self.preset = QComboBox()
         self.preset.addItems(PRESETS.keys())
@@ -482,30 +517,42 @@ class MainWindow(QMainWindow):
             widget.setMaximumWidth(440)
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        def add_setting(row: int, col: int, label_text: str, widget: QWidget) -> None:
+        def make_setting(label_text: str, widget: QWidget) -> QWidget:
+            setting = QWidget()
+            setting_layout = QVBoxLayout(setting)
+            setting_layout.setContentsMargins(0, 0, 0, 0)
+            setting_layout.setSpacing(5)
             label = QLabel(label_text)
-            label.setMinimumWidth(92)
-            label.setObjectName("hint")
-            settings_layout.addWidget(label, row, col * 2)
-            settings_layout.addWidget(widget, row, col * 2 + 1)
+            label.setObjectName("field_label")
+            setting_layout.addWidget(label)
+            setting_layout.addWidget(widget)
+            return setting
 
-        add_setting(0, 0, "Preset", self.preset)
-        add_setting(0, 1, "Language", self.language)
-        add_setting(1, 0, "Model", self.model_size)
-        add_setting(1, 1, "Task", self.task)
-        settings_layout.addWidget(self.vad_filter, 2, 0, 1, 2)
+        settings_layout.addWidget(make_setting("Preset", self.preset), 0, 0)
+        settings_layout.addWidget(make_setting("Language", self.language), 0, 1)
+        settings_layout.addWidget(make_setting("Model", self.model_size), 1, 0)
+        settings_layout.addWidget(make_setting("Task", self.task), 1, 1)
+        settings_layout.addWidget(self.vad_filter, 2, 0, 1, 1)
         self.model_help = QLabel()
         self.model_help.setObjectName("model_help")
         self.model_help.setWordWrap(True)
         self.model_help.setToolTip("Bigger Whisper models are usually more accurate, but slower and heavier.")
-        settings_layout.addWidget(self.model_help, 3, 0, 1, 4)
+        settings_layout.addWidget(self.model_help, 3, 0, 1, 2)
+        settings_card_layout.addLayout(settings_layout)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
-        control_box = QGroupBox("3  Run")
-        control_box.setMinimumHeight(122)
-        control_layout = QGridLayout(control_box)
-        control_layout.setContentsMargins(18, 20, 18, 16)
+        control_box = QGroupBox()
+        control_box.setObjectName("card")
+        control_box.setMinimumHeight(132)
+        control_card_layout = QVBoxLayout(control_box)
+        control_card_layout.setContentsMargins(18, 14, 18, 16)
+        control_card_layout.setSpacing(12)
+        control_title = QLabel("3  Run")
+        control_title.setObjectName("section_title")
+        control_card_layout.addWidget(control_title)
+        control_layout = QGridLayout()
+        control_layout.setContentsMargins(0, 0, 0, 0)
         control_layout.setHorizontalSpacing(12)
         control_layout.setVerticalSpacing(10)
         control_layout.setColumnStretch(2, 1)
@@ -544,13 +591,18 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(self.clear_btn, 0, 1)
         control_layout.addWidget(self.progress, 0, 2, 1, 4)
         control_layout.addWidget(self.status_label, 1, 0, 1, 6)
+        control_card_layout.addLayout(control_layout)
         layout.addWidget(control_box)
 
-        transcript_box = QGroupBox("4  Transcript")
-        transcript_box.setMinimumHeight(126)
+        transcript_box = QGroupBox()
+        transcript_box.setObjectName("card")
+        transcript_box.setMinimumHeight(150)
         transcript_layout = QVBoxLayout(transcript_box)
-        transcript_layout.setContentsMargins(18, 22, 18, 16)
+        transcript_layout.setContentsMargins(18, 14, 18, 16)
         transcript_layout.setSpacing(12)
+        transcript_title = QLabel("4  Transcript")
+        transcript_title.setObjectName("section_title")
+        transcript_layout.addWidget(transcript_title)
         self.transcript = QPlainTextEdit()
         self.transcript.setPlaceholderText("Transcript or English translation will appear here...")
         self.transcript.setMinimumHeight(72)
