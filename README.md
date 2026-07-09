@@ -2,12 +2,12 @@
 
 A **standalone no-browser Windows desktop app** for local audio/video transcription.
 
-You choose an audio/video file, click **Start transcription**, and get:
+You choose an audio/video file, click **Start transcription** or **Start translation**, review the result, then manually save only the files you want:
 
 - transcript text inside the desktop window
-- `.txt` transcript file
-- `.srt` subtitle file
-- `.vtt` subtitle file
+- optional `.txt` transcript file
+- optional `.srt` subtitle file
+- optional `.vtt` subtitle file
 
 It uses `faster-whisper` locally. No paid OpenAI API key is required.
 
@@ -183,8 +183,6 @@ For faster transcription:
 ```text
 Preset: Fast draft
 Language: choose the real language manually
-Compute type: int8
-Beam size: 1
 ```
 
 For better accuracy:
@@ -192,7 +190,6 @@ For better accuracy:
 ```text
 Preset: High accuracy
 Model: medium
-Beam size: 5
 ```
 
 For maximum accuracy:
@@ -210,8 +207,7 @@ Model: large-v3
 2. Use `Fast draft` for rough transcript.
 3. Use `Balanced` for normal daily work.
 4. Use `High accuracy` only when quality matters more than time.
-5. Keep `Voice activity filter` enabled to skip silence.
-6. On CPU-only laptops, `int8` is usually faster than `float32`.
+5. Keep `Skip silence` enabled to skip long quiet parts.
 
 ## Supported files
 

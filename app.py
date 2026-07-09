@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Optional
@@ -153,33 +152,28 @@ def get_model(model_size: str, compute_type: str, cpu_threads: int) -> WhisperMo
     return MODEL_CACHE[key]
 
 
-def write_outputs(base_name: str, output_dir: Path, segments_data: list[dict], transcript: str) -> tuple[Path, Path, Path]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = "".join(c for c in base_name if c.isalnum() or c in ("-", "_", ".")).strip() or "transcript"
-    stem = Path(safe_name).stem
+def safe_stem(file_name: str) -> str:
+    safe_name = "".join(c for c in file_name if c.isalnum() or c in ("-", "_", ".")).strip() or "transcript"
+    return Path(safe_name).stem
 
-    txt_path = output_dir / f"{stem}.txt"
-    srt_path = output_dir / f"{stem}.srt"
-    vtt_path = output_dir / f"{stem}.vtt"
 
-    txt_path.write_text(transcript, encoding="utf-8")
-
+def build_srt(segments_data: list[dict]) -> str:
     srt_lines: list[str] = []
     for i, seg in enumerate(segments_data, start=1):
         srt_lines.append(str(i))
         srt_lines.append(f"{timestamp(seg['start'])} --> {timestamp(seg['end'])}")
         srt_lines.append(seg["text"].strip())
         srt_lines.append("")
-    srt_path.write_text("\n".join(srt_lines), encoding="utf-8")
+    return "\n".join(srt_lines)
 
+
+def build_vtt(segments_data: list[dict]) -> str:
     vtt_lines = ["WEBVTT", ""]
     for seg in segments_data:
         vtt_lines.append(f"{timestamp_vtt(seg['start'])} --> {timestamp_vtt(seg['end'])}")
         vtt_lines.append(seg["text"].strip())
         vtt_lines.append("")
-    vtt_path.write_text("\n".join(vtt_lines), encoding="utf-8")
-
-    return txt_path, srt_path, vtt_path
+    return "\n".join(vtt_lines)
 
 
 class TranscriptionWorker(QObject):
@@ -191,7 +185,6 @@ class TranscriptionWorker(QObject):
     def __init__(
         self,
         file_path: str,
-        output_dir: str,
         model_size: str,
         language_name: str,
         task: str,
@@ -203,7 +196,6 @@ class TranscriptionWorker(QObject):
     ) -> None:
         super().__init__()
         self.file_path = file_path
-        self.output_dir = output_dir
         self.model_size = model_size
         self.language_name = language_name
         self.task = task
@@ -221,7 +213,8 @@ class TranscriptionWorker(QObject):
             model = get_model(self.model_size, self.compute_type, self.cpu_threads)
 
             language = LANGUAGES.get(self.language_name)
-            self.status.emit("Transcribing audio/video...")
+            action_word = "Translating" if self.task.lower() == "translate" else "Transcribing"
+            self.status.emit(f"{action_word} audio/video...")
             self.progress.emit(15)
             segments, info = model.transcribe(
                 self.file_path,
@@ -244,25 +237,22 @@ class TranscriptionWorker(QObject):
 
             transcript = clean_text("\n".join(text_parts))
             self.progress.emit(94)
-            self.status.emit("Writing transcript files...")
-            output_dir = Path(self.output_dir) if self.output_dir else Path(tempfile.mkdtemp(prefix="transcript_"))
-            txt_path, srt_path, vtt_path = write_outputs(
-                Path(self.file_path).name,
-                output_dir,
-                segments_data,
-                transcript,
-            )
+            self.status.emit("Preparing result for manual save...")
+            srt_text = build_srt(segments_data)
+            vtt_text = build_vtt(segments_data)
 
             elapsed = time.perf_counter() - start_time
             detected = getattr(info, "language", "unknown")
             duration = float(getattr(info, "duration", 0.0) or 0.0)
             speed = duration / elapsed if elapsed else 0.0
+            action_done = "Translation" if self.task.lower() == "translate" else "Transcription"
             status_text = (
-                f"Done. Language: {detected}. Duration: {duration:.1f}s. "
-                f"Processing: {elapsed:.1f}s ({speed:.2f}x realtime). Segments: {len(segments_data)}."
+                f"{action_done} done. Language: {detected}. Duration: {duration:.1f}s. "
+                f"Processing: {elapsed:.1f}s ({speed:.2f}x realtime). Segments: {len(segments_data)}. "
+                "Use Save buttons when ready."
             )
             self.progress.emit(100)
-            self.finished.emit(transcript, status_text, str(txt_path), str(srt_path), str(vtt_path))
+            self.finished.emit(transcript, status_text, transcript, srt_text, vtt_text)
         except Exception as exc:  # pragma: no cover - final UI error gate
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
@@ -297,7 +287,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.worker_thread: Optional[QThread] = None
         self.worker: Optional[TranscriptionWorker] = None
-        self.last_files: list[str] = []
+        self.result_txt = ""
+        self.result_srt = ""
+        self.result_vtt = ""
+        self.default_save_stem = "transcript"
         self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
         self.resize(1100, 760)
         self.setStyleSheet(DARK_STYLE)
@@ -340,17 +333,9 @@ class MainWindow(QMainWindow):
         browse_btn = QPushButton("Browse file")
         browse_btn.setFixedWidth(120)
         browse_btn.clicked.connect(self.browse_file)
-        self.output_dir = QLineEdit(str(Path.home() / "Documents" / "LocalWhisperTranscriber"))
-        self.output_dir.setMinimumHeight(36)
-        output_btn = QPushButton("Output folder")
-        output_btn.setFixedWidth(120)
-        output_btn.clicked.connect(self.browse_output_dir)
         file_layout.addWidget(QLabel("Audio/video"), 0, 0)
         file_layout.addWidget(self.file_path, 0, 1)
         file_layout.addWidget(browse_btn, 0, 2)
-        file_layout.addWidget(QLabel("Save to"), 1, 0)
-        file_layout.addWidget(self.output_dir, 1, 1)
-        file_layout.addWidget(output_btn, 1, 2)
         layout.addWidget(file_box)
 
         settings_box = QGroupBox("Settings")
@@ -370,6 +355,7 @@ class MainWindow(QMainWindow):
         self.language.addItems(LANGUAGES.keys())
         self.task = QComboBox()
         self.task.addItems(["transcribe", "translate"])
+        self.task.currentTextChanged.connect(self.update_action_labels)
         self.compute_type = QComboBox()
         self.compute_type.addItems(COMPUTE_TYPES)
         self.beam_size = QSpinBox()
@@ -421,10 +407,16 @@ class MainWindow(QMainWindow):
         self.clear_btn.setObjectName("secondary")
         self.clear_btn.setFixedWidth(90)
         self.clear_btn.clicked.connect(self.clear_output)
-        self.open_output_btn = QPushButton("Open output folder")
-        self.open_output_btn.setObjectName("secondary")
-        self.open_output_btn.setMinimumWidth(150)
-        self.open_output_btn.clicked.connect(self.open_output_folder)
+        self.save_txt_btn = QPushButton("Save TXT")
+        self.save_txt_btn.setObjectName("secondary")
+        self.save_txt_btn.clicked.connect(lambda: self.save_result("txt"))
+        self.save_srt_btn = QPushButton("Save SRT")
+        self.save_srt_btn.setObjectName("secondary")
+        self.save_srt_btn.clicked.connect(lambda: self.save_result("srt"))
+        self.save_vtt_btn = QPushButton("Save VTT")
+        self.save_vtt_btn.setObjectName("secondary")
+        self.save_vtt_btn.clicked.connect(lambda: self.save_result("vtt"))
+        self.set_save_buttons_enabled(False)
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -434,9 +426,11 @@ class MainWindow(QMainWindow):
         self.status_label.setMinimumHeight(24)
         control_layout.addWidget(self.start_btn, 0, 0)
         control_layout.addWidget(self.clear_btn, 0, 1)
-        control_layout.addWidget(self.open_output_btn, 0, 2)
-        control_layout.addWidget(self.progress, 0, 3)
-        control_layout.addWidget(self.status_label, 1, 0, 1, 4)
+        control_layout.addWidget(self.progress, 0, 2, 1, 4)
+        control_layout.addWidget(self.save_txt_btn, 1, 0)
+        control_layout.addWidget(self.save_srt_btn, 1, 1)
+        control_layout.addWidget(self.save_vtt_btn, 1, 2)
+        control_layout.addWidget(self.status_label, 2, 0, 1, 6)
         layout.addWidget(control_box)
 
         transcript_box = QGroupBox("Transcript")
@@ -447,27 +441,8 @@ class MainWindow(QMainWindow):
         transcript_layout.addWidget(self.transcript)
         layout.addWidget(transcript_box, stretch=1)
 
-        output_box = QGroupBox("Created files")
-        output_layout = QGridLayout(output_box)
-        output_layout.setColumnStretch(1, 1)
-        output_layout.setHorizontalSpacing(8)
-        output_layout.setVerticalSpacing(6)
-        self.txt_path = QLineEdit()
-        self.srt_path = QLineEdit()
-        self.vtt_path = QLineEdit()
-        for field in (self.txt_path, self.srt_path, self.vtt_path):
-            field.setReadOnly(True)
-            field.setMinimumHeight(32)
-            field.setPlaceholderText("Created after transcription")
-        output_layout.addWidget(QLabel("TXT"), 0, 0)
-        output_layout.addWidget(self.txt_path, 0, 1)
-        output_layout.addWidget(QLabel("SRT"), 1, 0)
-        output_layout.addWidget(self.srt_path, 1, 1)
-        output_layout.addWidget(QLabel("VTT"), 2, 0)
-        output_layout.addWidget(self.vtt_path, 2, 1)
-        layout.addWidget(output_box)
-
         self.setCentralWidget(root)
+        self.update_action_labels(self.task.currentText())
 
     def apply_preset(self, preset_name: str) -> None:
         preset = PRESETS[preset_name]
@@ -486,20 +461,12 @@ class MainWindow(QMainWindow):
         if path:
             self.file_path.setText(path)
 
-    def browse_output_dir(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Choose output folder", self.output_dir.text() or str(Path.home()))
-        if path:
-            self.output_dir.setText(path)
-
     def validate_inputs(self) -> bool:
         if not self.file_path.text().strip():
             QMessageBox.warning(self, "Missing file", "Choose an audio or video file first.")
             return False
         if not Path(self.file_path.text().strip()).exists():
             QMessageBox.warning(self, "File not found", "The selected file does not exist.")
-            return False
-        if not self.output_dir.text().strip():
-            QMessageBox.warning(self, "Missing output folder", "Choose an output folder.")
             return False
         return True
 
@@ -511,14 +478,19 @@ class MainWindow(QMainWindow):
             return
 
         self.start_btn.setEnabled(False)
+        self.set_save_buttons_enabled(False)
+        self.result_txt = ""
+        self.result_srt = ""
+        self.result_vtt = ""
+        self.default_save_stem = safe_stem(Path(self.file_path.text().strip()).name)
         self.progress.setValue(0)
+        action_noun = "Translation" if self.task.currentText() == "translate" else "Transcription"
         self.status_label.setText("Starting...")
-        self.status_bar.showMessage("Transcription running...")
+        self.status_bar.showMessage(f"{action_noun} running...")
 
         self.worker_thread = QThread()
         self.worker = TranscriptionWorker(
             file_path=self.file_path.text().strip(),
-            output_dir=self.output_dir.text().strip(),
             model_size=self.model_size.currentText(),
             language_name=self.language.currentText(),
             task=self.task.currentText(),
@@ -561,16 +533,16 @@ class MainWindow(QMainWindow):
         self.worker_thread = None
         self.start_btn.setEnabled(True)
 
-    def finish_transcription(self, transcript: str, status: str, txt_path: str, srt_path: str, vtt_path: str) -> None:
+    def finish_transcription(self, transcript: str, status: str, txt_text: str, srt_text: str, vtt_text: str) -> None:
+        self.result_txt = txt_text
+        self.result_srt = srt_text
+        self.result_vtt = vtt_text
         self.transcript.setPlainText(transcript)
         self.status_label.setText(status)
-        self.status_bar.showMessage("Finished.")
-        self.txt_path.setText(txt_path)
-        self.srt_path.setText(srt_path)
-        self.vtt_path.setText(vtt_path)
-        self.last_files = [txt_path, srt_path, vtt_path]
+        self.status_bar.showMessage("Finished. Result is not saved yet.")
+        self.set_save_buttons_enabled(bool(transcript))
         self.start_btn.setEnabled(True)
-        QMessageBox.information(self, "Transcription complete", status)
+        QMessageBox.information(self, "Result ready", status)
 
     def fail_transcription(self, error: str) -> None:
         self.start_btn.setEnabled(True)
@@ -581,24 +553,55 @@ class MainWindow(QMainWindow):
 
     def clear_output(self) -> None:
         self.transcript.clear()
-        self.txt_path.clear()
-        self.srt_path.clear()
-        self.vtt_path.clear()
+        self.result_txt = ""
+        self.result_srt = ""
+        self.result_vtt = ""
+        self.set_save_buttons_enabled(False)
         self.progress.setValue(0)
         self.status_label.setText("Ready.")
         self.status_bar.showMessage("Ready.")
 
-    def open_output_folder(self) -> None:
-        folder = self.output_dir.text().strip()
-        if not folder:
+    def set_save_buttons_enabled(self, enabled: bool) -> None:
+        for button in (self.save_txt_btn, self.save_srt_btn, self.save_vtt_btn):
+            button.setEnabled(enabled)
+
+    def update_action_labels(self, task: str) -> None:
+        if not hasattr(self, "start_btn"):
             return
-        Path(folder).mkdir(parents=True, exist_ok=True)
-        if sys.platform.startswith("win"):
-            os.startfile(folder)  # type: ignore[attr-defined]
-        elif sys.platform == "darwin":
-            os.system(f'open "{folder}"')
+        has_status_bar = hasattr(self, "status_bar")
+        if task == "translate":
+            self.start_btn.setText("Start translation")
+            if has_status_bar:
+                self.status_bar.showMessage("Translate mode: Whisper will translate speech into English.")
         else:
-            os.system(f'xdg-open "{folder}" >/dev/null 2>&1 &')
+            self.start_btn.setText("Start transcription")
+            if has_status_bar:
+                self.status_bar.showMessage("Transcribe mode: Whisper will write the original spoken language.")
+
+    def save_result(self, kind: str) -> None:
+        content_by_kind = {
+            "txt": self.result_txt,
+            "srt": self.result_srt,
+            "vtt": self.result_vtt,
+        }
+        content = content_by_kind.get(kind, "")
+        if not content:
+            QMessageBox.information(self, "Nothing to save", "Run transcription or translation first.")
+            return
+        default_path = str(Path.home() / "Documents" / f"{self.default_save_stem}.{kind}")
+        filters = {
+            "txt": "Text file (*.txt)",
+            "srt": "SubRip subtitles (*.srt)",
+            "vtt": "WebVTT subtitles (*.vtt)",
+        }
+        path, _ = QFileDialog.getSaveFileName(self, f"Save {kind.upper()}", default_path, filters[kind])
+        if not path:
+            return
+        if not path.lower().endswith(f".{kind}"):
+            path = f"{path}.{kind}"
+        Path(path).write_text(content, encoding="utf-8")
+        self.status_bar.showMessage(f"Saved {kind.upper()} to {path}")
+        QMessageBox.information(self, "Saved", f"Saved {kind.upper()} file:\n{path}")
 
     def show_about(self) -> None:
         QMessageBox.about(

@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Manual save workflow: results stay in the app until the user clicks `Save TXT`, `Save SRT`, or `Save VTT`.
+- The main action button now changes between `Start transcription` and `Start translation` based on the selected task.
+- Removed automatic transcript/subtitle file creation after every run.
 - Simplified the desktop UI by removing CPU threads, beam size, and compute type from the main workflow.
 - Presets now keep advanced speed/accuracy settings behind the scenes for beginner-friendly use.
 - Added worker/thread cleanup so multiple files can be transcribed in one app session.
