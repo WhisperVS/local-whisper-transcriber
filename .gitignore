@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+
+# Virtual environments
+.venv/
+.buildvenv/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+*.spec.bak
+installer-output/
+
+# Logs and debug output
+*.log
+exe_debug_log.txt
+
+# Transcription temp/output files
+transcript_*/
+outputs/
+*.txt.tmp
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local model/cache folders if created inside project
+models/
+.cache/
+huggingface/
