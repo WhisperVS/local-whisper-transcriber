@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Made the app layout adaptive for arbitrary window resizing: smaller widths switch Settings to a single-column layout instead of relying on one fixed resolution.
 - Reworked the settings area to use explicit card titles and label-above-field controls so combo boxes do not visually stack on top of each other on Windows.
 - Polished the desktop UI for fullscreen and smaller windows: cleaner dark theme, centered max-width content, stronger visual hierarchy, bigger touch targets, clearer step titles, and better spacing around the save buttons.
 - Slimmed the PyInstaller spec so the EXE builder no longer intentionally collects all PySide6 and NumPy test/optional modules. This should reduce noisy warnings and package size.

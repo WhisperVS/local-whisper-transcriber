@@ -376,8 +376,8 @@ class MainWindow(QMainWindow):
         self.result_vtt = ""
         self.default_save_stem = "transcript"
         self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
-        self.resize(1180, 1000)
-        self.setMinimumSize(960, 760)
+        self.resize(1000, 760)
+        self.setMinimumSize(640, 520)
         self.setStyleSheet(DARK_STYLE)
         self._build_ui()
         self._build_menu()
@@ -475,12 +475,12 @@ class MainWindow(QMainWindow):
         settings_title = QLabel("2  Settings")
         settings_title.setObjectName("section_title")
         settings_card_layout.addWidget(settings_title)
-        settings_layout = QGridLayout()
-        settings_layout.setContentsMargins(0, 0, 0, 0)
-        settings_layout.setHorizontalSpacing(18)
-        settings_layout.setVerticalSpacing(14)
-        settings_layout.setColumnStretch(0, 1)
-        settings_layout.setColumnStretch(1, 1)
+        self.settings_layout = QGridLayout()
+        self.settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.settings_layout.setHorizontalSpacing(18)
+        self.settings_layout.setVerticalSpacing(14)
+        self.settings_layout.setColumnStretch(0, 1)
+        self.settings_layout.setColumnStretch(1, 1)
 
         self.preset = QComboBox()
         self.preset.addItems(PRESETS.keys())
@@ -528,17 +528,17 @@ class MainWindow(QMainWindow):
             setting_layout.addWidget(widget)
             return setting
 
-        settings_layout.addWidget(make_setting("Preset", self.preset), 0, 0)
-        settings_layout.addWidget(make_setting("Language", self.language), 0, 1)
-        settings_layout.addWidget(make_setting("Model", self.model_size), 1, 0)
-        settings_layout.addWidget(make_setting("Task", self.task), 1, 1)
-        settings_layout.addWidget(self.vad_filter, 2, 0, 1, 1)
+        self.setting_preset = make_setting("Preset", self.preset)
+        self.setting_language = make_setting("Language", self.language)
+        self.setting_model = make_setting("Model", self.model_size)
+        self.setting_task = make_setting("Task", self.task)
         self.model_help = QLabel()
         self.model_help.setObjectName("model_help")
         self.model_help.setWordWrap(True)
         self.model_help.setToolTip("Bigger Whisper models are usually more accurate, but slower and heavier.")
-        settings_layout.addWidget(self.model_help, 3, 0, 1, 2)
-        settings_card_layout.addLayout(settings_layout)
+        self._settings_compact: Optional[bool] = None
+        self._arrange_settings(compact=False)
+        settings_card_layout.addLayout(self.settings_layout)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
@@ -626,6 +626,45 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(root)
         self.update_action_labels(self.task.currentText())
+        self._apply_responsive_layout()
+
+    def _clear_layout(self, layout: QGridLayout) -> None:
+        while layout.count():
+            layout.takeAt(0)
+
+    def _arrange_settings(self, compact: bool) -> None:
+        if getattr(self, "_settings_compact", None) == compact:
+            return
+        self._settings_compact = compact
+        self._clear_layout(self.settings_layout)
+        if compact:
+            self.settings_layout.setColumnStretch(0, 1)
+            self.settings_layout.setColumnStretch(1, 0)
+            self.settings_layout.addWidget(self.setting_preset, 0, 0, 1, 2)
+            self.settings_layout.addWidget(self.setting_language, 1, 0, 1, 2)
+            self.settings_layout.addWidget(self.setting_model, 2, 0, 1, 2)
+            self.settings_layout.addWidget(self.setting_task, 3, 0, 1, 2)
+            self.settings_layout.addWidget(self.vad_filter, 4, 0, 1, 2)
+            self.settings_layout.addWidget(self.model_help, 5, 0, 1, 2)
+        else:
+            self.settings_layout.setColumnStretch(0, 1)
+            self.settings_layout.setColumnStretch(1, 1)
+            self.settings_layout.addWidget(self.setting_preset, 0, 0)
+            self.settings_layout.addWidget(self.setting_language, 0, 1)
+            self.settings_layout.addWidget(self.setting_model, 1, 0)
+            self.settings_layout.addWidget(self.setting_task, 1, 1)
+            self.settings_layout.addWidget(self.vad_filter, 2, 0, 1, 1)
+            self.settings_layout.addWidget(self.model_help, 3, 0, 1, 2)
+
+    def _apply_responsive_layout(self) -> None:
+        if not hasattr(self, "settings_layout"):
+            return
+        compact = self.width() < 820
+        self._arrange_settings(compact=compact)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._apply_responsive_layout()
 
     def apply_preset(self, preset_name: str) -> None:
         preset = PRESETS[preset_name]
