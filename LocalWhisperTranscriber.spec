@@ -2,24 +2,21 @@
 
 from PyInstaller.utils.hooks import collect_all, collect_data_files, copy_metadata
 
-# Gradio/FastAPI/faster-whisper have dynamic imports and package metadata.
+# PySide6 and faster-whisper use dynamic imports and package metadata.
 datas = []
 binaries = []
 hiddenimports = []
 
 for package in [
-    "gradio",
-    "gradio_client",
-    "safehttpx",
-    "fastapi",
-    "starlette",
-    "uvicorn",
-    "pydantic",
+    "PySide6",
+    "shiboken6",
     "faster_whisper",
     "ctranslate2",
     "tokenizers",
     "huggingface_hub",
-    "requests",
+    "numpy",
+    "av",
+    "tqdm",
 ]:
     try:
         package_datas, package_binaries, package_hidden = collect_all(package)
@@ -33,22 +30,9 @@ for package in [
     except Exception:
         pass
 
-# Include Gradio templates/static assets if hook misses them.
 try:
-    datas += collect_data_files("gradio")
-    datas += collect_data_files("gradio_client")
-    datas += collect_data_files("safehttpx")
-except Exception:
-    pass
-
-# safehttpx reads version.txt at runtime; force-include it for PyInstaller.
-try:
-    import safehttpx
-    from pathlib import Path
-    safehttpx_dir = Path(safehttpx.__file__).parent
-    version_file = safehttpx_dir / "version.txt"
-    if version_file.exists():
-        datas.append((str(version_file), "safehttpx"))
+    datas += collect_data_files("PySide6")
+    datas += collect_data_files("faster_whisper")
 except Exception:
     pass
 
@@ -64,7 +48,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=["gradio", "gradio_client", "fastapi", "uvicorn", "starlette"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -83,7 +67,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

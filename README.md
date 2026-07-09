@@ -1,29 +1,39 @@
 # Local Whisper Transcriber for Windows
 
-A simple local transcription program for Windows.
+A **standalone no-browser Windows desktop app** for local audio/video transcription.
 
-You upload an audio/video file, click **Transcribe**, and get:
+You choose an audio/video file, click **Start transcription**, and get:
 
-- transcript text
-- `.txt` download
-- `.srt` subtitles
-- `.vtt` subtitles
+- transcript text inside the desktop window
+- `.txt` transcript file
+- `.srt` subtitle file
+- `.vtt` subtitle file
 
 It uses `faster-whisper` locally. No paid OpenAI API key is required.
 
 ## Privacy
 
-Your audio is processed on your PC. The first time you choose a Whisper model, it downloads that model from the internet. After that, transcription runs locally.
+Your audio is processed on your PC.
 
-## Requirements for normal script version
+The first time you use a Whisper model, the model files may download from Hugging Face. After that, the model is cached locally and can be reused.
+
+## Current app type
+
+This version is a true desktop app:
+
+```text
+PySide6 desktop window + faster-whisper engine
+```
+
+It does **not** run a browser UI and does **not** open `127.0.0.1`.
+
+## Requirements for source/script version
 
 1. Windows 10/11
 2. Python 3.11 or 3.12
 3. Internet for first install and first model download
 
-Do **not** use Python 3.14 for this app. Some Gradio/faster-whisper dependencies are not stable with Python 3.14 yet.
-
-Recommended install:
+Recommended Python:
 
 ```text
 https://www.python.org/downloads/release/python-3119/
@@ -35,7 +45,9 @@ Important during Python install:
 Check: Add python.exe to PATH
 ```
 
-## Install script version
+Do **not** use Python 3.14 for this project yet. Some local AI/packaging dependencies can lag behind the newest Python releases.
+
+## Install from source
 
 Double-click:
 
@@ -43,9 +55,9 @@ Double-click:
 install_windows.bat
 ```
 
-Wait until it says install complete.
+Wait until install completes.
 
-## Start script version
+## Start the desktop app from source
 
 Double-click:
 
@@ -53,17 +65,9 @@ Double-click:
 start.bat
 ```
 
-Browser should open automatically.
-
-If it does not, open:
-
-```text
-http://127.0.0.1:7860
-```
+A normal Windows desktop window should open. No browser should open.
 
 ## Build a portable Windows EXE
-
-If you want to share the app with another Windows PC, build the EXE on Windows.
 
 Double-click:
 
@@ -83,7 +87,23 @@ Share the whole folder:
 dist\LocalWhisperTranscriber
 ```
 
-Important: do **not** share only the `.exe` from inside that folder. PyInstaller creates supporting files beside it. Share the whole folder, or build the installer below.
+Important: do **not** share only the `.exe`. PyInstaller creates supporting files beside it.
+
+## Debug packaged EXE
+
+If the EXE does not open, run:
+
+```text
+run_exe_debug.bat
+```
+
+It writes:
+
+```text
+exe_debug_log.txt
+```
+
+Use that log to troubleshoot packaging errors.
 
 ## Create a desktop shortcut
 
@@ -101,7 +121,7 @@ Desktop\Local Whisper Transcriber.lnk
 
 ## Build a real Setup.exe installer
 
-For a proper installer that creates Start Menu/Desktop shortcuts, use the free Inno Setup tool.
+For a proper installer, use the free Inno Setup tool.
 
 Install Inno Setup:
 
@@ -121,21 +141,19 @@ Or from PowerShell/CMD if `iscc` is in PATH:
 iscc installer_inno_setup.iss
 ```
 
-The installer will be created in:
+The installer is created in:
 
 ```text
 installer-output\LocalWhisperTranscriberSetup.exe
 ```
 
-That is the file you can share more easily.
-
 ## Recommended settings
 
-Start with the built-in preset:
+Start with:
 
 ```text
-Speed / accuracy preset: Balanced
-Language: Auto detect, or choose English/Russian/Spanish manually
+Preset: Balanced
+Language: choose manually if known, otherwise Auto detect
 Task: transcribe
 ```
 
@@ -143,7 +161,7 @@ For faster transcription:
 
 ```text
 Preset: Fast draft
-Language: choose the real language manually instead of Auto detect
+Language: choose the real language manually
 Compute type: int8
 Beam size: 1
 ```
@@ -165,22 +183,9 @@ Model: large-v3
 
 `large-v3` is most accurate but can be slow/heavy.
 
-## Theme options
-
-The app includes switchable themes:
-
-```text
-Midnight
-Frost
-Solar
-Clean Light
-```
-
-You can change the theme from the top of the app window.
-
 ## Speed tips
 
-1. Pick the language manually when you know it. Auto-detect is convenient but slower.
+1. Pick the language manually when you know it.
 2. Use `Fast draft` for rough transcript.
 3. Use `Balanced` for normal daily work.
 4. Use `High accuracy` only when quality matters more than time.
@@ -198,6 +203,9 @@ m4a
 mp4
 mov
 webm
+mkv
+aac
+flac
 ```
 
 If a file format fails, convert it to `.mp3` or `.wav` first.
@@ -206,7 +214,7 @@ If a file format fails, convert it to `.mp3` or `.wav` first.
 
 ### Python not found
 
-Install Python 3.11+ and make sure `Add python.exe to PATH` is checked.
+Install Python 3.11/3.12 and make sure `Add python.exe to PATH` is checked.
 
 ### Install fails with build tools error
 
@@ -244,19 +252,20 @@ Also choose the real language manually instead of Auto detect.
 
 ### EXE is very large
 
-This is normal. Whisper, Gradio, CTranslate2, and their dependencies are heavy.
+This is normal. PySide6, Whisper, CTranslate2, and their dependencies are heavy.
 
 ### First transcription downloads model
 
-This is normal. The EXE contains the app, not every Whisper model. Models download on first use and are cached by Hugging Face.
+This is normal. The EXE contains the app, not every Whisper model. Models download on first use and are cached locally.
 
-## Notes
+## Roadmap
 
-Later we can add:
+Possible future improvements:
 
 - batch transcription
-- speaker names
-- cleanup/grammar correction
-- summary
-- translation
+- speaker names / diarization
+- transcript cleanup
+- summaries
+- translation workflow
 - transcript history
+- model manager

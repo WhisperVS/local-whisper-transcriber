@@ -1,4 +1,2 @@
 faster-whisper==1.1.1
-gradio==5.12.0
-requests>=2.31.0
-safehttpx>=0.1.6
+PySide6==6.8.1.1

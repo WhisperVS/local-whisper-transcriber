@@ -10,7 +10,6 @@ if not exist ".venv\Scripts\activate.bat" (
 )
 
 call .venv\Scripts\activate.bat
-echo Starting Local Whisper Transcriber...
-echo If browser does not open, go to: http://127.0.0.1:7860
+echo Starting Local Whisper Transcriber desktop app...
 python app.py
 pause

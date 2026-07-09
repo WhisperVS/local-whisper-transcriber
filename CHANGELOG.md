@@ -2,22 +2,28 @@
 
 ## Unreleased
 
-Initial public project structure for Local Whisper Transcriber.
+### Changed
+
+- Replaced the previous Gradio/browser UI with a true PySide6 desktop application.
+- The app now opens as a normal Windows desktop window instead of a `127.0.0.1` browser page.
+- Updated dependencies to `PySide6` + `faster-whisper`.
+- Updated PyInstaller packaging for desktop EXE builds.
+- Rewrote README for the standalone no-browser workflow.
+
+### Kept
+
+- Local faster-whisper transcription.
+- TXT, SRT, and VTT export.
+- Windows install, start, repair, EXE build, shortcut, and installer scripts.
+- Speed/accuracy presets.
+
+## Initial baseline
 
 ### Added
 
-- Local Gradio-based transcription interface.
-- `faster-whisper` transcription engine.
-- TXT, SRT, and VTT export.
+- Local transcription application.
 - Windows install, start, and repair scripts.
 - Windows PyInstaller EXE builder.
 - Optional Inno Setup installer script.
 - Desktop shortcut helper.
 - Debug launcher for packaged EXE troubleshooting.
-- Speed/accuracy presets and theme selector.
-
-### Notes
-
-- The app runs locally on Windows.
-- First model use downloads the selected Whisper model.
-- Python 3.11 or 3.12 is recommended for development/building.
