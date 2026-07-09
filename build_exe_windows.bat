@@ -64,6 +64,10 @@ echo Build complete.
 echo Your portable program is here:
 echo dist\LocalWhisperTranscriber\LocalWhisperTranscriber.exe
 echo.
+echo If PyInstaller created build\LocalWhisperTranscriber\warn-LocalWhisperTranscriber.txt,
+echo that file may contain harmless optional-module warnings. If the EXE does not open,
+echo run run_exe_debug.bat and send exe_debug_log.txt.
+echo.
 echo You can copy the whole folder:
 echo dist\LocalWhisperTranscriber
 echo to another Windows PC and run the EXE.
