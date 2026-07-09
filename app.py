@@ -13,7 +13,7 @@ from typing import Optional
 
 from faster_whisper import WhisperModel
 from PySide6.QtCore import QObject, QThread, Qt, Signal
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QFont
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -69,59 +69,130 @@ MODEL_CACHE: dict[tuple[str, str, int], WhisperModel] = {}
 
 
 DARK_STYLE = """
-QMainWindow, QWidget {
-    background-color: #0b1020;
+QMainWindow {
+    background-color: #070b16;
     color: #e5e7eb;
     font-family: Segoe UI, Arial, sans-serif;
     font-size: 10.5pt;
 }
+QWidget {
+    color: #e5e7eb;
+    font-family: Segoe UI, Arial, sans-serif;
+    font-size: 10.5pt;
+}
+QWidget#centralRoot {
+    background-color: #070b16;
+}
+QWidget#contentPanel {
+    background-color: transparent;
+}
+QWidget#hero {
+    background-color: #0f172a;
+    border: 1px solid #1e3a5f;
+    border-radius: 16px;
+}
+QLabel {
+    background-color: transparent;
+}
+QLabel#title {
+    color: #f8fafc;
+    font-size: 19pt;
+    font-weight: 800;
+}
+QLabel#subtitle, QLabel#hint, QLabel#model_help, QLabel#save_label {
+    color: #9fb8d8;
+}
+QLabel#step_badge {
+    color: #bfdbfe;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
 QGroupBox {
-    border: 1px solid #334155;
-    border-radius: 12px;
-    margin-top: 12px;
-    padding: 14px;
-    background-color: #111827;
+    border: 1px solid #26364f;
+    border-radius: 14px;
+    margin-top: 14px;
+    padding: 18px 18px 16px 18px;
+    background-color: #101827;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 14px;
-    padding: 0 6px;
+    left: 16px;
+    padding: 0 8px;
     color: #93c5fd;
-    font-weight: 600;
+    font-weight: 700;
 }
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox {
-    background-color: #020617;
+    background-color: #050816;
     border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 7px;
-    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 10px;
+    color: #f8fafc;
+    selection-background-color: #2563eb;
 }
-QPlainTextEdit { font-family: Consolas, Cascadia Mono, monospace; }
+QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus {
+    border: 1px solid #60a5fa;
+}
+QPlainTextEdit {
+    font-family: Consolas, Cascadia Mono, monospace;
+    line-height: 125%;
+}
+QComboBox::drop-down {
+    border: 0;
+    width: 28px;
+}
 QPushButton {
     background-color: #2563eb;
     border: 0;
-    border-radius: 9px;
+    border-radius: 10px;
     color: white;
-    padding: 9px 14px;
-    font-weight: 600;
+    padding: 10px 16px;
+    font-weight: 700;
 }
 QPushButton:hover { background-color: #1d4ed8; }
-QPushButton:disabled { background-color: #475569; color: #cbd5e1; }
-QPushButton#secondary { background-color: #334155; }
-QPushButton#secondary:hover { background-color: #475569; }
+QPushButton:pressed { background-color: #1e40af; }
+QPushButton:disabled { background-color: #243044; color: #94a3b8; }
+QPushButton#primary { background-color: #2563eb; }
+QPushButton#secondary { background-color: #2d3b50; }
+QPushButton#secondary:hover { background-color: #3b4b63; }
 QPushButton#danger { background-color: #dc2626; }
+QCheckBox {
+    spacing: 8px;
+    color: #dbeafe;
+}
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid #475569;
+    background-color: #050816;
+}
+QCheckBox::indicator:checked {
+    background-color: #2563eb;
+    border: 1px solid #60a5fa;
+}
 QProgressBar {
     border: 1px solid #334155;
-    border-radius: 8px;
-    background-color: #020617;
+    border-radius: 10px;
+    background-color: #050816;
     text-align: center;
-    color: #e5e7eb;
+    color: #dbeafe;
+    font-weight: 600;
 }
 QProgressBar::chunk {
-    border-radius: 8px;
+    border-radius: 9px;
     background-color: #22c55e;
 }
-QStatusBar { background-color: #020617; color: #cbd5e1; }
+QMenuBar {
+    background-color: #070b16;
+    color: #e5e7eb;
+}
+QMenuBar::item:selected { background-color: #1e293b; }
+QStatusBar {
+    background-color: #050816;
+    color: #cbd5e1;
+    border-top: 1px solid #1e293b;
+}
 """
 
 
@@ -301,8 +372,8 @@ class MainWindow(QMainWindow):
         self.result_vtt = ""
         self.default_save_stem = "transcript"
         self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
-        self.resize(1100, 760)
-        self.setMinimumSize(1000, 760)
+        self.resize(1180, 780)
+        self.setMinimumSize(960, 760)
         self.setStyleSheet(DARK_STYLE)
         self._build_ui()
         self._build_menu()
@@ -318,40 +389,61 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         root = QWidget()
-        layout = QVBoxLayout(root)
-        layout.setContentsMargins(18, 14, 18, 12)
-        layout.setSpacing(10)
+        root.setObjectName("centralRoot")
+        outer_layout = QHBoxLayout(root)
+        outer_layout.setContentsMargins(18, 14, 18, 12)
+        outer_layout.setSpacing(0)
 
+        content = QWidget()
+        content.setObjectName("contentPanel")
+        content.setMaximumWidth(1280)
+        content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        outer_layout.addWidget(content, stretch=1)
+
+        hero = QWidget()
+        hero.setObjectName("hero")
+        hero_layout = QVBoxLayout(hero)
+        hero_layout.setContentsMargins(18, 14, 18, 14)
+        hero_layout.setSpacing(4)
         title = QLabel(APP_NAME)
-        title_font = QFont()
-        title_font.setPointSize(18)
-        title_font.setBold(True)
-        title.setFont(title_font)
-        subtitle = QLabel("No browser • No paid API • Local transcription with faster-whisper")
-        subtitle.setStyleSheet("color: #93c5fd;")
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        title.setObjectName("title")
+        subtitle = QLabel("Private local transcription • No browser • No paid API")
+        subtitle.setObjectName("subtitle")
+        subtitle.setWordWrap(True)
+        hero_layout.addWidget(title)
+        hero_layout.addWidget(subtitle)
+        layout.addWidget(hero)
 
-        file_box = QGroupBox("Input")
+        file_box = QGroupBox("1  Choose file")
+        file_box.setMinimumHeight(112)
         file_layout = QGridLayout(file_box)
+        file_layout.setContentsMargins(18, 20, 18, 16)
         file_layout.setColumnStretch(1, 1)
-        file_layout.setHorizontalSpacing(10)
+        file_layout.setHorizontalSpacing(12)
         file_layout.setVerticalSpacing(8)
         self.file_path = DropLineEdit()
-        self.file_path.setMinimumHeight(36)
+        self.file_path.setMinimumHeight(42)
         self.file_path.file_dropped.connect(lambda _: self.status_bar.showMessage("File selected by drag and drop."))
         browse_btn = QPushButton("Browse file")
-        browse_btn.setFixedWidth(120)
+        browse_btn.setMinimumWidth(130)
+        browse_btn.setMinimumHeight(42)
         browse_btn.clicked.connect(self.browse_file)
-        file_layout.addWidget(QLabel("Audio/video"), 0, 0)
+        file_label = QLabel("Audio/video")
+        file_label.setMinimumWidth(92)
+        file_layout.addWidget(file_label, 0, 0)
         file_layout.addWidget(self.file_path, 0, 1)
         file_layout.addWidget(browse_btn, 0, 2)
         layout.addWidget(file_box)
 
-        settings_box = QGroupBox("Settings")
+        settings_box = QGroupBox("2  Settings")
+        settings_box.setMinimumHeight(170)
         settings_layout = QGridLayout(settings_box)
+        settings_layout.setContentsMargins(18, 20, 18, 16)
         settings_layout.setHorizontalSpacing(18)
-        settings_layout.setVerticalSpacing(8)
+        settings_layout.setVerticalSpacing(10)
         settings_layout.setColumnStretch(1, 1)
         settings_layout.setColumnStretch(3, 1)
 
@@ -386,13 +478,14 @@ class MainWindow(QMainWindow):
 
         compact_widgets = [self.preset, self.model_size, self.language, self.task]
         for widget in compact_widgets:
-            widget.setMinimumHeight(34)
-            widget.setMaximumWidth(360)
+            widget.setMinimumHeight(38)
+            widget.setMaximumWidth(440)
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         def add_setting(row: int, col: int, label_text: str, widget: QWidget) -> None:
             label = QLabel(label_text)
-            label.setMinimumWidth(90)
+            label.setMinimumWidth(92)
+            label.setObjectName("hint")
             settings_layout.addWidget(label, row, col * 2)
             settings_layout.addWidget(widget, row, col * 2 + 1)
 
@@ -403,56 +496,64 @@ class MainWindow(QMainWindow):
         settings_layout.addWidget(self.vad_filter, 2, 0, 1, 2)
         self.model_help = QLabel()
         self.model_help.setObjectName("model_help")
-        self.model_help.setStyleSheet("color: #94a3b8;")
         self.model_help.setWordWrap(True)
         self.model_help.setToolTip("Bigger Whisper models are usually more accurate, but slower and heavier.")
         settings_layout.addWidget(self.model_help, 3, 0, 1, 4)
-        helper = QLabel("Normal use: choose file → keep Balanced → click Start. Translate mode outputs English only.")
-        helper.setStyleSheet("color: #94a3b8;")
-        helper.setWordWrap(True)
-        settings_layout.addWidget(helper, 4, 0, 1, 4)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
-        control_box = QGroupBox("Run")
+        control_box = QGroupBox("3  Run")
+        control_box.setMinimumHeight(122)
         control_layout = QGridLayout(control_box)
-        control_layout.setColumnStretch(3, 1)
+        control_layout.setContentsMargins(18, 20, 18, 16)
+        control_layout.setHorizontalSpacing(12)
+        control_layout.setVerticalSpacing(10)
+        control_layout.setColumnStretch(2, 1)
         self.start_btn = QPushButton("Start transcription")
-        self.start_btn.setMinimumWidth(150)
+        self.start_btn.setObjectName("primary")
+        self.start_btn.setMinimumWidth(170)
+        self.start_btn.setMinimumHeight(42)
         self.start_btn.clicked.connect(self.start_transcription)
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setObjectName("secondary")
-        self.clear_btn.setFixedWidth(90)
+        self.clear_btn.setMinimumWidth(100)
+        self.clear_btn.setMinimumHeight(42)
         self.clear_btn.clicked.connect(self.clear_output)
         self.save_txt_btn = QPushButton("Save TXT")
         self.save_txt_btn.setObjectName("secondary")
+        self.save_txt_btn.setMinimumHeight(38)
         self.save_txt_btn.clicked.connect(lambda: self.save_result("txt"))
         self.save_srt_btn = QPushButton("Save SRT")
         self.save_srt_btn.setObjectName("secondary")
+        self.save_srt_btn.setMinimumHeight(38)
         self.save_srt_btn.clicked.connect(lambda: self.save_result("srt"))
         self.save_vtt_btn = QPushButton("Save VTT")
         self.save_vtt_btn.setObjectName("secondary")
+        self.save_vtt_btn.setMinimumHeight(38)
         self.save_vtt_btn.clicked.connect(lambda: self.save_result("vtt"))
         self.set_save_buttons_enabled(False)
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
-        self.progress.setMinimumHeight(22)
+        self.progress.setMinimumHeight(26)
         self.status_label = QLabel("Ready.")
+        self.status_label.setObjectName("hint")
         self.status_label.setWordWrap(True)
-        self.status_label.setMinimumHeight(24)
+        self.status_label.setMinimumHeight(26)
         control_layout.addWidget(self.start_btn, 0, 0)
         control_layout.addWidget(self.clear_btn, 0, 1)
         control_layout.addWidget(self.progress, 0, 2, 1, 4)
         control_layout.addWidget(self.status_label, 1, 0, 1, 6)
         layout.addWidget(control_box)
 
-        transcript_box = QGroupBox("Transcript")
+        transcript_box = QGroupBox("4  Transcript")
+        transcript_box.setMinimumHeight(126)
         transcript_layout = QVBoxLayout(transcript_box)
-        transcript_layout.setContentsMargins(14, 18, 14, 14)
+        transcript_layout.setContentsMargins(18, 22, 18, 16)
+        transcript_layout.setSpacing(12)
         self.transcript = QPlainTextEdit()
         self.transcript.setPlaceholderText("Transcript or English translation will appear here...")
-        self.transcript.setMinimumHeight(110)
+        self.transcript.setMinimumHeight(72)
         self.transcript.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         transcript_layout.addWidget(self.transcript)
         layout.addWidget(transcript_box, stretch=1)
@@ -461,9 +562,9 @@ class MainWindow(QMainWindow):
         save_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         save_row = QHBoxLayout(save_widget)
         save_row.setContentsMargins(8, 0, 8, 0)
-        save_row.setSpacing(8)
-        save_label = QLabel("Manual save:")
-        save_label.setStyleSheet("color: #94a3b8;")
+        save_row.setSpacing(10)
+        save_label = QLabel("Save result:")
+        save_label.setObjectName("save_label")
         save_row.addWidget(save_label)
         save_row.addWidget(self.save_txt_btn)
         save_row.addWidget(self.save_srt_btn)

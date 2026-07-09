@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Polished the desktop UI for fullscreen and smaller windows: cleaner dark theme, centered max-width content, stronger visual hierarchy, bigger touch targets, clearer step titles, and better spacing around the save buttons.
 - Slimmed the PyInstaller spec so the EXE builder no longer intentionally collects all PySide6 and NumPy test/optional modules. This should reduce noisy warnings and package size.
 - Added an in-app model explanation under the `Model` setting so beginners can see what `tiny`, `base`, `small`, `medium`, and `large-v3` mean without opening documentation.
 - Fixed smaller-window layout so manual save buttons stay below the transcript field instead of overlapping it.
