@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Fixed smaller-window layout so manual save buttons stay below the transcript field instead of overlapping it.
 - Moved manual save buttons under the transcript field to declutter the Run section.
 - Renamed the translation task to `translate to English` so Whisper's built-in limitation is clear.
 - Manual save workflow: results stay in the app until the user clicks `Save TXT`, `Save SRT`, or `Save VTT`.
