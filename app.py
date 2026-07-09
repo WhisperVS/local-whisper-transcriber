@@ -52,6 +52,13 @@ LANGUAGES = {
 
 MODEL_SIZES = ["tiny", "base", "small", "medium", "large-v3"]
 COMPUTE_TYPES = ["int8", "float32"]
+MODEL_HELP = {
+    "tiny": "tiny: fastest, weakest accuracy. Good only for quick tests or very weak PCs.",
+    "base": "base: fast rough draft. Better than tiny, but still for speed more than quality.",
+    "small": "small: recommended default. Best balance for daily transcription.",
+    "medium": "medium: more accurate, slower. Use for important or noisy audio.",
+    "large-v3": "large-v3: best accuracy, slowest/heaviest. Use when quality matters most.",
+}
 PRESETS = {
     "Fast draft": {"model": "base", "beam": 1, "vad": True, "compute": "int8"},
     "Balanced": {"model": "small", "beam": 3, "vad": True, "compute": "int8"},
@@ -354,6 +361,7 @@ class MainWindow(QMainWindow):
         self.preset.currentTextChanged.connect(self.apply_preset)
         self.model_size = QComboBox()
         self.model_size.addItems(MODEL_SIZES)
+        self.model_size.currentTextChanged.connect(self.update_model_help)
         self.language = QComboBox()
         self.language.addItems(LANGUAGES.keys())
         self.task = QComboBox()
@@ -393,10 +401,16 @@ class MainWindow(QMainWindow):
         add_setting(1, 0, "Model", self.model_size)
         add_setting(1, 1, "Task", self.task)
         settings_layout.addWidget(self.vad_filter, 2, 0, 1, 2)
+        self.model_help = QLabel()
+        self.model_help.setObjectName("model_help")
+        self.model_help.setStyleSheet("color: #94a3b8;")
+        self.model_help.setWordWrap(True)
+        self.model_help.setToolTip("Bigger Whisper models are usually more accurate, but slower and heavier.")
+        settings_layout.addWidget(self.model_help, 3, 0, 1, 4)
         helper = QLabel("Normal use: choose file → keep Balanced → click Start. Translate mode outputs English only.")
         helper.setStyleSheet("color: #94a3b8;")
         helper.setWordWrap(True)
-        settings_layout.addWidget(helper, 2, 2, 1, 2)
+        settings_layout.addWidget(helper, 4, 0, 1, 4)
         layout.addWidget(settings_box)
         self.apply_preset("Balanced")
 
@@ -466,6 +480,12 @@ class MainWindow(QMainWindow):
         self.beam_size.setValue(int(preset["beam"]))
         self.vad_filter.setChecked(bool(preset["vad"]))
         self.compute_type.setCurrentText(preset["compute"])
+        self.update_model_help(self.model_size.currentText())
+
+    def update_model_help(self, model_size: str) -> None:
+        if not hasattr(self, "model_help"):
+            return
+        self.model_help.setText(MODEL_HELP.get(model_size, "Choose a Whisper model size."))
 
     def browse_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(

@@ -203,6 +203,8 @@ Model: large-v3
 
 `large-v3` is most accurate but can be slow/heavy.
 
+The app also shows a short explanation directly under the `Model` setting, so you can change models without memorizing this list.
+
 ## Speed tips
 
 1. Pick the language manually when you know it.
