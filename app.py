@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -213,13 +214,14 @@ class TranscriptionWorker(QObject):
             model = get_model(self.model_size, self.compute_type, self.cpu_threads)
 
             language = LANGUAGES.get(self.language_name)
-            action_word = "Translating" if self.task.lower() == "translate" else "Transcribing"
+            task_value = "translate" if self.task.lower().startswith("translate") else "transcribe"
+            action_word = "Translating" if task_value == "translate" else "Transcribing"
             self.status.emit(f"{action_word} audio/video...")
             self.progress.emit(15)
             segments, info = model.transcribe(
                 self.file_path,
                 language=language,
-                task=self.task.lower(),
+                task=task_value,
                 beam_size=int(self.beam_size),
                 vad_filter=bool(self.vad_filter),
                 condition_on_previous_text=bool(self.condition_on_previous_text),
@@ -245,7 +247,7 @@ class TranscriptionWorker(QObject):
             detected = getattr(info, "language", "unknown")
             duration = float(getattr(info, "duration", 0.0) or 0.0)
             speed = duration / elapsed if elapsed else 0.0
-            action_done = "Translation" if self.task.lower() == "translate" else "Transcription"
+            action_done = "Translation" if task_value == "translate" else "Transcription"
             status_text = (
                 f"{action_done} done. Language: {detected}. Duration: {duration:.1f}s. "
                 f"Processing: {elapsed:.1f}s ({speed:.2f}x realtime). Segments: {len(segments_data)}. "
@@ -354,7 +356,7 @@ class MainWindow(QMainWindow):
         self.language = QComboBox()
         self.language.addItems(LANGUAGES.keys())
         self.task = QComboBox()
-        self.task.addItems(["transcribe", "translate"])
+        self.task.addItems(["transcribe", "translate to English"])
         self.task.currentTextChanged.connect(self.update_action_labels)
         self.compute_type = QComboBox()
         self.compute_type.addItems(COMPUTE_TYPES)
@@ -390,7 +392,7 @@ class MainWindow(QMainWindow):
         add_setting(1, 0, "Model", self.model_size)
         add_setting(1, 1, "Task", self.task)
         settings_layout.addWidget(self.vad_filter, 2, 0, 1, 2)
-        helper = QLabel("Normal use: choose file → keep Balanced → click Start. Preset handles advanced speed settings.")
+        helper = QLabel("Normal use: choose file → keep Balanced → click Start. Translate mode outputs English only.")
         helper.setStyleSheet("color: #94a3b8;")
         helper.setWordWrap(True)
         settings_layout.addWidget(helper, 2, 2, 1, 2)
@@ -427,18 +429,25 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(self.start_btn, 0, 0)
         control_layout.addWidget(self.clear_btn, 0, 1)
         control_layout.addWidget(self.progress, 0, 2, 1, 4)
-        control_layout.addWidget(self.save_txt_btn, 1, 0)
-        control_layout.addWidget(self.save_srt_btn, 1, 1)
-        control_layout.addWidget(self.save_vtt_btn, 1, 2)
-        control_layout.addWidget(self.status_label, 2, 0, 1, 6)
+        control_layout.addWidget(self.status_label, 1, 0, 1, 6)
         layout.addWidget(control_box)
 
         transcript_box = QGroupBox("Transcript")
         transcript_layout = QVBoxLayout(transcript_box)
         self.transcript = QPlainTextEdit()
-        self.transcript.setPlaceholderText("Transcript will appear here...")
+        self.transcript.setPlaceholderText("Transcript or English translation will appear here...")
         self.transcript.setMinimumHeight(220)
         transcript_layout.addWidget(self.transcript)
+
+        save_row = QHBoxLayout()
+        save_label = QLabel("Manual save:")
+        save_label.setStyleSheet("color: #94a3b8;")
+        save_row.addWidget(save_label)
+        save_row.addWidget(self.save_txt_btn)
+        save_row.addWidget(self.save_srt_btn)
+        save_row.addWidget(self.save_vtt_btn)
+        save_row.addStretch(1)
+        transcript_layout.addLayout(save_row)
         layout.addWidget(transcript_box, stretch=1)
 
         self.setCentralWidget(root)
@@ -484,7 +493,7 @@ class MainWindow(QMainWindow):
         self.result_vtt = ""
         self.default_save_stem = safe_stem(Path(self.file_path.text().strip()).name)
         self.progress.setValue(0)
-        action_noun = "Translation" if self.task.currentText() == "translate" else "Transcription"
+        action_noun = "Translation" if self.task.currentText().startswith("translate") else "Transcription"
         self.status_label.setText("Starting...")
         self.status_bar.showMessage(f"{action_noun} running...")
 
@@ -569,10 +578,10 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "start_btn"):
             return
         has_status_bar = hasattr(self, "status_bar")
-        if task == "translate":
+        if task.startswith("translate"):
             self.start_btn.setText("Start translation")
             if has_status_bar:
-                self.status_bar.showMessage("Translate mode: Whisper will translate speech into English.")
+                self.status_bar.showMessage("Translate to English mode: Whisper can only translate speech into English.")
         else:
             self.start_btn.setText("Start transcription")
             if has_status_bar:

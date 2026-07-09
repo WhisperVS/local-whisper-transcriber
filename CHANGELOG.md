@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Moved manual save buttons under the transcript field to declutter the Run section.
+- Renamed the translation task to `translate to English` so Whisper's built-in limitation is clear.
 - Manual save workflow: results stay in the app until the user clicks `Save TXT`, `Save SRT`, or `Save VTT`.
 - The main action button now changes between `Start transcription` and `Start translation` based on the selected task.
 - Removed automatic transcript/subtitle file creation after every run.

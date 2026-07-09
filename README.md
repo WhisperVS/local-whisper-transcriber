@@ -163,10 +163,12 @@ For normal use, you do **not** need to change CPU threads or beam size. The pres
 
 ```text
 transcribe = write the speech in the original spoken language
-translate  = translate spoken audio into English
+translate to English = translate spoken audio into English
 ```
 
 Important: Whisper's built-in `translate` mode translates **to English**. It is not a general Russian-to-Spanish or English-to-Russian translator.
+
+If you need English speech → Russian text, the app needs a second translation step after transcription, using a local translation model such as Argos Translate, NLLB, MarianMT, or another offline translator. That can be added later, but it is separate from Whisper itself.
 
 For example:
 
